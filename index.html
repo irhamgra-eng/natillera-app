@@ -384,7 +384,7 @@
 
     try {
       // Guardar respuesta en Supabase
-      await fetch(
+      const respGuardar = await fetch(
         `${SUPABASE_URL}/rest/v1/respuestas_invitacion`,
         {
           method: 'POST',
@@ -403,6 +403,14 @@
         }
       );
 
+      // Si la respuesta NO se guardó (p. ej. RLS), no marcar 'completada':
+      // de lo contrario quedaría una invitación sin respuesta (huérfana) y el
+      // admin nunca vería la solicitud.
+      if (!respGuardar.ok) {
+        const detalle = await respGuardar.text();
+        throw new Error('No se pudo guardar la respuesta (' + respGuardar.status + '): ' + detalle);
+      }
+
       // Actualizar estado de la invitación
       await fetch(
         `${SUPABASE_URL}/rest/v1/invitaciones` +
@@ -420,6 +428,7 @@
 
       mostrarEstado('completada');
     } catch (e) {
+      console.error('Error al enviar solicitud:', e);
       btn.disabled = false;
       btn.textContent = 'Enviar solicitud';
       mostrarMsg(
